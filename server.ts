@@ -6,10 +6,10 @@ const { createServer } = require("node:http");
 const { Server } = require("socket.io");
 import { Socket } from "socket.io";
 const { PrismaClient } = require("@prisma/client");
-
 const cors = require("cors");
 
 const prisma = new PrismaClient();
+const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
@@ -19,7 +19,6 @@ const io = new Server(server, {
   },
 });
 
-// Admin password - this would ideally be stored securely, not hardcoded
 const ADMIN_PASSWORD = "123456";
 
 const frontendBuildPath = path.join(__dirname, "../frontend/.next");
@@ -294,7 +293,7 @@ io.on("connection", (socket: Socket) => {
 
 // Fallback to Next.js for frontend routing
 app.get("*", (req: Request, res: Response) => {
-  res.sendFile(path.join(frontendBuildPath, "server/app/index.html"));
+  res.sendFile(path.join(__dirname, "../frontend/.next/server/app/index.html"));
 });
 
 const PORT = process.env.PORT || 3000;
