@@ -9,7 +9,6 @@ const { PrismaClient } = require("@prisma/client");
 const cors = require("cors");
 
 const prisma = new PrismaClient();
-const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
@@ -20,10 +19,6 @@ const io = new Server(server, {
 });
 
 const ADMIN_PASSWORD = "123456";
-
-const frontendBuildPath = path.join(__dirname, "../frontend/.next");
-
-app.use(express.static(frontendBuildPath));
 
 app.use(
   cors({
@@ -289,11 +284,6 @@ io.on("connection", (socket: Socket) => {
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
   });
-});
-
-// Fallback to Next.js for frontend routing
-app.get("*", (req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, "../frontend/.next/server/app/index.html"));
 });
 
 const PORT = process.env.PORT || 3000;
