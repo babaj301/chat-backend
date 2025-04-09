@@ -1,15 +1,14 @@
 {
-  "version": 2,
   "builds": [
     {
       "src": "server.ts",
       "use": "@vercel/node"
     }
   ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/server.ts"
-    }
-  ]
+  "build": {
+    "env": {
+      "DATABASE_URL": "file:./dev.db"
+    },
+    "commands": ["npx prisma generate", "npm run build"]
+  }
 }
