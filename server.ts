@@ -12,8 +12,9 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://chat-frontend-nns29gqub-babaj301s-projects.vercel.app",
+    origin: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    credentials: true,
   },
 });
 
@@ -21,8 +22,9 @@ const ADMIN_PASSWORD = "123456";
 
 app.use(
   cors({
-    origin: "https://chat-frontend-nns29gqub-babaj301s-projects.vercel.app",
+    origin: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    credentials: true,
   })
 );
 app.use(express.json());
