@@ -22,8 +22,6 @@ const io = new Server(server, {
 // Admin password - this would ideally be stored securely, not hardcoded
 const ADMIN_PASSWORD = "123456";
 
-const port = 4000;
-
 const frontendBuildPath = path.join(__dirname, "../frontend/.next");
 
 app.use(express.static(frontendBuildPath));
@@ -295,12 +293,12 @@ io.on("connection", (socket: Socket) => {
 });
 
 // Fallback to Next.js for frontend routing
-app.get("*", (req, res) => {
-  res.sendFile(path.join(frontendBuildPath, "server/pages/index.html"));
+app.get("*", (req: Request, res: Response) => {
+  res.sendFile(path.join(frontendBuildPath, "server/app/index.html"));
 });
 
 const PORT = process.env.PORT || 4000;
 
-server.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
