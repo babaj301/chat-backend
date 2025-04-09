@@ -1,0 +1,40 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite" // or your database provider
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  isAdmin   Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  messages  Message[]
+  ownedRooms Room[]   // Rooms where this user is the admin
+}
+
+model Room {
+  id        String    @id @default(uuid())
+  name      String
+  createdAt DateTime  @default(now())
+  adminId   String?   // Optional admin ID
+  admin     User?     @relation(fields: [adminId], references: [id])
+  messages  Message[]
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  text      String
+  createdAt DateTime @default(now())
+  isSystem  Boolean  @default(false)
+  isAdmin   Boolean  @default(false)
+  userId    String?  // Optional for system messages
+  user      User?    @relation(fields: [userId], references: [id])
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id])
+}
