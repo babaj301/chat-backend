@@ -253,11 +253,40 @@ io.on("connection", (socket: Socket) => {
   });
 
   // Delete a message
-  socket.on("deleteMessage", async ({ messageId }) => {
+  // Delete a message
+  socket.on("deleteMessage", async ({ messageId, userId }) => {
     try {
+      // Find the message first to check permissions
+      const message = await prisma.message.findUnique({
+        where: { id: messageId },
+        include: { room: true },
+      });
+
+      if (!message) {
+        return socket.emit("error", "Message not found");
+      }
+
+      // Get user info
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      // Check if user is authorized to delete this message
+      // Only message author, room admin, or system admin can delete messages
+      if (
+        message.userId !== userId &&
+        message.room.adminId !== userId &&
+        !user.isAdmin
+      ) {
+        return socket.emit("error", "Not authorized to delete this message");
+      }
+
       await prisma.message.delete({
         where: { id: messageId },
       });
+
+      // Broadcast to room that message was deleted
+      io.to(`room_${message.roomId}`).emit("messageDeleted", { messageId });
     } catch (error) {
       console.error("Error deleting message:", error);
       socket.emit("error", "Failed to delete message");
