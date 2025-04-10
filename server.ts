@@ -12,7 +12,7 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://chat-frontend-ten-opal.vercel.app, http://localhost:3000",
+    origin: "https://chat-frontend-ten-opal.vercel.app",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   },
@@ -22,7 +22,7 @@ const ADMIN_PASSWORD = "123456";
 
 app.use(
   cors({
-    origin: "https://chat-frontend-ten-opal.vercel.app, http://localhost:3000",
+    origin: "https://chat-frontend-ten-opal.vercel.app",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   })
