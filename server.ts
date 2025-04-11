@@ -144,9 +144,11 @@ io.on("connection", (socket: Socket) => {
   });
 
   // Handle joining a room
-  socket.on("joinRoom", async ({ roomId, userId, username }) => {
+  socket.on("joinRoom", async ({ roomId, userId, username, isRejoin }) => {
     try {
-      console.log(`${username} (${userId}) joining room ${roomId}`);
+      console.log(
+        `${username} (${userId}) ${isRejoin ? "re" : ""}joining room ${roomId}`
+      );
 
       // Verify room exists
       const room = await prisma.room.findUnique({
@@ -168,19 +170,22 @@ io.on("connection", (socket: Socket) => {
       const roomChannel = `room_${roomId}`;
       socket.join(roomChannel);
 
-      // Create a system message for user joining
-      const systemMessage = await prisma.message.create({
-        data: {
-          text: `${username} has joined the room`,
-          isSystem: true,
-          roomId,
-          userId: null,
-        },
-        include: { user: true },
-      });
+      // Only create a system message for new joins (not rejoins)
+      if (!isRejoin) {
+        // Create a system message for user joining
+        const systemMessage = await prisma.message.create({
+          data: {
+            text: `${username} has joined the room`,
+            isSystem: true,
+            roomId,
+            userId: null,
+          },
+          include: { user: true },
+        });
 
-      // Broadcast join message to room
-      io.to(roomChannel).emit("newMessage", systemMessage);
+        // Broadcast join message to room
+        io.to(roomChannel).emit("newMessage", systemMessage);
+      }
 
       // Get recent messages
       const messages = await prisma.message.findMany({
@@ -196,13 +201,14 @@ io.on("connection", (socket: Socket) => {
         messages,
       });
 
-      console.log(`${username} joined ${room.name} successfully`);
+      console.log(
+        `${username} ${isRejoin ? "re" : ""}joined ${room.name} successfully`
+      );
     } catch (error) {
       console.error("Error joining room:", error);
       socket.emit("error", "Failed to join room");
     }
   });
-
   // Handle sending messages
   socket.on("sendMessage", async ({ roomId, userId, text, isAdmin }) => {
     try {
