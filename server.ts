@@ -312,14 +312,39 @@ io.on("connection", (socket: Socket) => {
   });
 
   // Delete a room
-  socket.on("deleteRoom", async ({ roomId }) => {
+  socket.on("deleteRoom", async ({ roomId, userId }) => {
     try {
+      // 1. First verify the room exists and get its admin
+      const room = await prisma.room.findUnique({
+        where: { id: roomId },
+        select: { adminId: true },
+      });
+
+      if (!room) {
+        throw new Error("Room not found");
+      }
+
+      // 2. Check permissions (either admin or room owner)
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { isAdmin: true },
+      });
+
+      const isAuthorized = user?.isAdmin || room.adminId === userId;
+      if (!isAuthorized) {
+        throw new Error("Unauthorized: Only room owner or admin can delete");
+      }
+
+      // 4. Delete the room
       await prisma.room.delete({
         where: { id: roomId },
       });
+
+      // 5. Notify all clients
+      io.emit("roomDeleted", roomId);
     } catch (error) {
       console.error("Error deleting room:", error);
-      socket.emit("error", "Failed to delete room");
+      socket.emit("deleteRoomError", error);
     }
   });
 
