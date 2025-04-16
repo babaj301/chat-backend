@@ -12,7 +12,10 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://chat-frontend-ten-opal.vercel.app",
+    origin: [
+      "https://chat-frontend-ten-opal.vercel.app",
+      "http://localhost:3000",
+    ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   },
@@ -22,7 +25,10 @@ const ADMIN_PASSWORD = "123456";
 
 app.use(
   cors({
-    origin: "https://chat-frontend-ten-opal.vercel.app",
+    origin: [
+      "https://chat-frontend-ten-opal.vercel.app",
+      "http://localhost:3000",
+    ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   })
@@ -308,43 +314,6 @@ io.on("connection", (socket: Socket) => {
     } catch (error) {
       console.error("Error deleting message:", error);
       socket.emit("error", "Failed to delete message");
-    }
-  });
-
-  // Delete a room
-  socket.on("deleteRoom", async ({ roomId, userId }) => {
-    try {
-      // 1. First verify the room exists and get its admin
-      const room = await prisma.room.findUnique({
-        where: { id: roomId },
-        select: { adminId: true },
-      });
-
-      if (!room) {
-        throw new Error("Room not found");
-      }
-
-      // 2. Check permissions (either admin or room owner)
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { isAdmin: true },
-      });
-
-      const isAuthorized = user?.isAdmin || room.adminId === userId;
-      if (!isAuthorized) {
-        throw new Error("Unauthorized: Only room owner or admin can delete");
-      }
-
-      // 4. Delete the room
-      await prisma.room.delete({
-        where: { id: roomId },
-      });
-
-      // 5. Notify all clients
-      io.emit("roomDeleted", roomId);
-    } catch (error) {
-      console.error("Error deleting room:", error);
-      socket.emit("deleteRoomError", error);
     }
   });
 
