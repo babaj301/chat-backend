@@ -8,9 +8,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express = require("express");
 require("dotenv/config");
+const multer_1 = __importDefault(require("multer"));
+const multer_storage_cloudinary_1 = require("multer-storage-cloudinary");
+const cloudinary_1 = __importDefault(require("./cloudinary"));
 const { createServer } = require("node:http");
 const { Server } = require("socket.io");
 const { PrismaClient } = require("@prisma/client");
@@ -29,6 +35,16 @@ const io = new Server(server, {
     },
 });
 const ADMIN_PASSWORD = "123456";
+const storage = new multer_storage_cloudinary_1.CloudinaryStorage({
+    cloudinary: cloudinary_1.default,
+    params: (req, file) => __awaiter(void 0, void 0, void 0, function* () {
+        return ({
+            folder: "chatty",
+            allowedFormats: ["jpg", "png", "jpeg"],
+        });
+    }),
+});
+const upload = (0, multer_1.default)({ storage });
 app.use(cors({
     origin: [
         "https://chat-frontend-ten-opal.vercel.app",
@@ -58,6 +74,44 @@ app.get("/rooms", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         res.status(500).json({
             error: "Failed to fetch rooms",
         });
+    }
+}));
+// To upload an image
+app.post("/upload", upload.single("file"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const imageUrl = (_a = req.file) === null || _a === void 0 ? void 0 : _a.path;
+        const { userId, roomId } = req.body;
+        if (!imageUrl) {
+            return res.status(400).json({ error: "No image uploaded" });
+        }
+        const image = yield prisma.image.create({
+            data: {
+                url: imageUrl,
+                userId,
+                roomId,
+            },
+        });
+        const message = yield prisma.message.create({
+            data: {
+                text: "",
+                imageUrl,
+                userId,
+                roomId,
+                isSystem: false,
+            },
+            include: {
+                user: true,
+            },
+        });
+        // Emit the new message to all users in the room
+        io.to(`room_${roomId}`).emit("newMessage", message);
+        // Send the image back to the client
+        res.status(201).json(image);
+    }
+    catch (error) {
+        console.error("Error uploading image:", error);
+        res.status(500).json({ error: "Internal server error" });
     }
 }));
 // Create a room

@@ -1,15 +1,20 @@
 const express = require("express");
 import "dotenv/config";
-import { Request, Response } from "express";
+import { Request as ExpressRequest, Response } from "express";
+import { Socket } from "socket.io";
+import multer from "multer";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+import cloudinary from "./cloudinary";
+
 const { createServer } = require("node:http");
 const { Server } = require("socket.io");
-import { Socket } from "socket.io";
 const { PrismaClient } = require("@prisma/client");
 const cors = require("cors");
 
 const prisma = new PrismaClient();
 const app = express();
 const server = createServer(app);
+
 const io = new Server(server, {
   cors: {
     origin: [
@@ -22,6 +27,20 @@ const io = new Server(server, {
 });
 
 const ADMIN_PASSWORD = "123456";
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => ({
+    folder: "chatty",
+    allowedFormats: ["jpg", "png", "jpeg"],
+  }),
+});
+
+const upload = multer({ storage });
+
+interface Request extends ExpressRequest {
+  file?: Express.Multer.File;
+}
 
 app.use(
   cors({
@@ -57,6 +76,51 @@ app.get("/rooms", async (req: Request, res: Response) => {
     });
   }
 });
+
+// To upload an image
+app.post(
+  "/upload",
+  upload.single("file"),
+  async (req: Request, res: Response) => {
+    try {
+      const imageUrl = req.file?.path;
+      const { userId, roomId } = req.body;
+      if (!imageUrl) {
+        return res.status(400).json({ error: "No image uploaded" });
+      }
+
+      const image = await prisma.image.create({
+        data: {
+          url: imageUrl,
+          userId,
+          roomId,
+        },
+      });
+
+      const message = await prisma.message.create({
+        data: {
+          text: "",
+          imageUrl,
+          userId,
+          roomId,
+          isSystem: false,
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      // Emit the new message to all users in the room
+      io.to(`room_${roomId}`).emit("newMessage", message);
+
+      // Send the image back to the client
+      res.status(201).json(image);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
 
 // Create a room
 app.post("/rooms", async (req: Request, res: Response) => {

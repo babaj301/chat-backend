@@ -16,6 +16,7 @@ model User {
   createdAt DateTime  @default(now())
   messages  Message[]
   ownedRooms Room[]   // Rooms where this user is the admin
+  images    Image[]
 }
 
 model Room {
@@ -25,16 +26,30 @@ model Room {
   adminId   String?   // Optional admin ID
   admin     User?     @relation(fields: [adminId], references: [id])
   messages  Message[]
+  images    Image[]
 }
 
 model Message {
   id        String   @id @default(uuid())
   text      String
+  imageUrl  String?
   createdAt DateTime @default(now())
   isSystem  Boolean  @default(false)
   isAdmin   Boolean  @default(false)
   userId    String?  // Optional for system messages
   user      User?    @relation(fields: [userId], references: [id])
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id])
+}
+
+model Image{
+  id        String   @id @default(uuid())
+  url       String
+  createdAt DateTime @default(now())
+
+  userId    String?  // Optional for system messages
+  user      User?    @relation(fields: [userId], references: [id])
+
   roomId    String
   room      Room     @relation(fields: [roomId], references: [id])
 }
