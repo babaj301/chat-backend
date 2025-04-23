@@ -30,12 +30,12 @@ model Room {
 model Message {
   id        String   @id @default(uuid())
   text      String?
-  imageUrl  String?  // Add this field
+  imageUrl  String?
   createdAt DateTime @default(now())
   isSystem  Boolean  @default(false)
   isAdmin   Boolean  @default(false)
   userId    String?  // Optional for system messages
   user      User?    @relation(fields: [userId], references: [id])
   roomId    String
-  room      Room     @relation(fields: [roomId], references: [id])
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }

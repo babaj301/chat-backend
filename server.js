@@ -300,7 +300,7 @@ io.on("connection", (socket) => {
           return socket.emit("error", "Not authorized to send admin messages");
         }
 
-        // Save message to database
+        // Save message to database with explicit room relation
         const newMessage = await prisma.message.create({
           data: {
             text,
@@ -309,7 +309,10 @@ io.on("connection", (socket) => {
             roomId,
             isAdmin: isAdmin && (user.isAdmin || room.adminId === userId),
           },
-          include: { user: true },
+          include: {
+            user: true,
+            room: true,
+          },
         });
 
         // Broadcast to everyone in the room
