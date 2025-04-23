@@ -327,6 +327,32 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, () => {
+async function initializeDefaultRooms() {
+  try {
+    const defaultRooms = [
+      { name: "General Chat" },
+      { name: "Random Discussions" },
+    ];
+
+    for (const room of defaultRooms) {
+      const existingRoom = await prisma.room.findFirst({
+        where: { name: room.name },
+      });
+
+      if (!existingRoom) {
+        await prisma.room.create({
+          data: room,
+        });
+        console.log(`Created default room: ${room.name}`);
+      }
+    }
+  } catch (error) {
+    console.error("Error creating default rooms:", error);
+  }
+}
+
+// Initialize rooms before starting the server
+server.listen(PORT, async () => {
+  await initializeDefaultRooms();
   console.log(`Server running on http://localhost:${PORT}`);
 });
