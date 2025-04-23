@@ -4,6 +4,8 @@ const { createServer } = require("node:http");
 const { Server } = require("socket.io");
 const { PrismaClient } = require("@prisma/client");
 const cors = require("cors");
+const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
 
 const prisma = new PrismaClient();
 const app = express();
@@ -21,6 +23,19 @@ app.use(
     credentials: true,
   })
 );
+
+cloudinary.config({
+  cloud_name: "dsblurb7p",
+  api_key: "834265428478147",
+  api_secret: "nShVL7aKA_bDsls6omSE-XkLtQU",
+});
+
+// Set up multer for memory storage
+const upload = multer({
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+});
 
 const io = new Server(server, {
   cors: {
@@ -122,6 +137,33 @@ app.post("/users", async (req, res) => {
   } catch (error) {
     console.error("Error with user:", error);
     res.status(500).json({ error: "Failed to process user" });
+  }
+});
+
+// Upload image endpoint
+app.post("/upload", upload.single("image"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    // Upload to Cloudinary
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: "chat-app" },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+
+      uploadStream.end(req.file.buffer);
+    });
+
+    res.json({ imageUrl: result.secure_url });
+  } catch (error) {
+    console.error("Error uploading image:", error);
+    res.status(500).json({ error: "Failed to upload image" });
   }
 });
 
@@ -227,53 +269,57 @@ io.on("connection", (socket) => {
   });
 
   // Handle sending messages
-  socket.on("sendMessage", async ({ roomId, userId, text, isAdmin }) => {
-    try {
-      if (!roomId || !userId || !text) {
-        return socket.emit("error", "Missing required message data");
+  socket.on(
+    "sendMessage",
+    async ({ roomId, userId, text, imageUrl, isAdmin }) => {
+      try {
+        if (!roomId || !userId || (!text && !imageUrl)) {
+          return socket.emit("error", "Missing required message data");
+        }
+
+        // Verify user exists
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+        });
+
+        if (!user) {
+          return socket.emit("error", "User not found");
+        }
+
+        // Verify room exists
+        const room = await prisma.room.findUnique({
+          where: { id: roomId },
+        });
+
+        if (!room) {
+          return socket.emit("error", "Room not found");
+        }
+
+        // For admin messages, verify the user is an admin
+        if (isAdmin && !user.isAdmin && room.adminId !== userId) {
+          return socket.emit("error", "Not authorized to send admin messages");
+        }
+
+        // Save message to database
+        const newMessage = await prisma.message.create({
+          data: {
+            text,
+            imageUrl,
+            userId,
+            roomId,
+            isAdmin: isAdmin && (user.isAdmin || room.adminId === userId),
+          },
+          include: { user: true },
+        });
+
+        // Broadcast to everyone in the room
+        io.to(`room_${roomId}`).emit("newMessage", newMessage);
+      } catch (error) {
+        console.error("Error sending message:", error);
+        socket.emit("error", "Failed to send message");
       }
-
-      // Verify user exists
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-      });
-
-      if (!user) {
-        return socket.emit("error", "User not found");
-      }
-
-      // Verify room exists
-      const room = await prisma.room.findUnique({
-        where: { id: roomId },
-      });
-
-      if (!room) {
-        return socket.emit("error", "Room not found");
-      }
-
-      // For admin messages, verify the user is an admin
-      if (isAdmin && !user.isAdmin && room.adminId !== userId) {
-        return socket.emit("error", "Not authorized to send admin messages");
-      }
-
-      // Save message to database
-      const newMessage = await prisma.message.create({
-        data: {
-          text,
-          userId,
-          roomId,
-          isAdmin: isAdmin && (user.isAdmin || room.adminId === userId),
-        },
-        include: { user: true },
-      });
-
-      // Broadcast to everyone in the room
-      io.to(`room_${roomId}`).emit("newMessage", newMessage);
-    } catch (error) {
-      console.error("Error sending message:", error);
-      socket.emit("error", "Failed to send message");
     }
-  });
+  );
 
   // Delete a message
   socket.on("deleteMessage", async ({ messageId, userId }) => {

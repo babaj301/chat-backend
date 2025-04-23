@@ -29,7 +29,8 @@ model Room {
 
 model Message {
   id        String   @id @default(uuid())
-  text      String
+  text      String?
+  imageUrl  String?  // Add this field
   createdAt DateTime @default(now())
   isSystem  Boolean  @default(false)
   isAdmin   Boolean  @default(false)
