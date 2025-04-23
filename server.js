@@ -330,6 +330,5 @@ const PORT = process.env.PORT || 3000;
 
 // Initialize rooms before starting the server
 server.listen(PORT, async () => {
-  await initializeDefaultRooms();
   console.log(`Server running on http://localhost:${PORT}`);
 });
