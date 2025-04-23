@@ -6,13 +6,13 @@ services:
     startCommand: npm start
     disk:
       name: sqlite-data
-      mountPath: /data
+      mountPath: /opt/render/project/src/prisma
       sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        value: file:/data/sqlite.db
+        value: "file:./dev.db"
 
 databases:
   - name: chat_db
