@@ -1,9 +1,7 @@
 const express = require("express");
-import "dotenv/config";
-import { Request, Response } from "express";
+require("dotenv").config();
 const { createServer } = require("node:http");
 const { Server } = require("socket.io");
-import { Socket } from "socket.io";
 const { PrismaClient } = require("@prisma/client");
 const cors = require("cors");
 
@@ -36,12 +34,12 @@ app.use(
 app.use(express.json());
 
 // Basic route
-app.get("/", (req: Request, res: Response) => {
+app.get("/", (req, res) => {
   res.send("Chat API is running");
 });
 
 // Get all chat rooms
-app.get("/rooms", async (req: Request, res: Response) => {
+app.get("/rooms", async (req, res) => {
   console.log("Fetching rooms");
   try {
     const rooms = await prisma.room.findMany({
@@ -59,7 +57,7 @@ app.get("/rooms", async (req: Request, res: Response) => {
 });
 
 // Create a room
-app.post("/rooms", async (req: Request, res: Response) => {
+app.post("/rooms", async (req, res) => {
   try {
     const { name, adminId } = req.body;
 
@@ -82,7 +80,7 @@ app.post("/rooms", async (req: Request, res: Response) => {
 });
 
 // Create or get a user with admin authentication
-app.post("/users", async (req: Request, res: Response) => {
+app.post("/users", async (req, res) => {
   try {
     const { name, isAdmin, adminPassword } = req.body;
 
@@ -127,7 +125,7 @@ app.post("/users", async (req: Request, res: Response) => {
 });
 
 // Socket.IO connection handling
-io.on("connection", (socket: Socket) => {
+io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
   // Handle room creation
@@ -276,7 +274,6 @@ io.on("connection", (socket: Socket) => {
     }
   });
 
-  // Delete a message
   // Delete a message
   socket.on("deleteMessage", async ({ messageId, userId }) => {
     try {

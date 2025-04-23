@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: chat-backend
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    disk:
+      name: sqlite-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:/data/sqlite.db
+
+databases:
+  - name: chat_db
+    plan: free

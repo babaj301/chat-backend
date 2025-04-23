@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "prisma generate && tsc",
-    "start": "node dist/server.js",
-    "dev": "ts-node-dev server.ts"
+    "build": "prisma generate",
+    "start": "prisma migrate deploy && node server.js",
+    "dev": "nodemon server.js",
+    "postinstall": "prisma generate"
   },
   "keywords": [],
   "author": "",
