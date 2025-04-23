@@ -8,16 +8,6 @@ const cors = require("cors");
 const prisma = new PrismaClient();
 const app = express();
 const server = createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: [
-      "https://chat-frontend-ten-opal.vercel.app",
-      "http://localhost:3000/rooms",
-    ],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    credentials: true,
-  },
-});
 
 const ADMIN_PASSWORD = "123456";
 
@@ -31,6 +21,17 @@ app.use(
     credentials: true,
   })
 );
+
+const io = new Server(server, {
+  cors: {
+    origin: [
+      "https://chat-frontend-ten-opal.vercel.app",
+      "http://localhost:3000/rooms",
+    ],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    credentials: true,
+  },
+});
 app.use(express.json());
 
 // Basic route
