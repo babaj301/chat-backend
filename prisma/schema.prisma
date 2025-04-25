@@ -31,10 +31,11 @@ model Message {
   id        String   @id @default(uuid())
   text      String?
   imageUrl  String?
+  audioUrl  String?  // Add this field for voice messages
   createdAt DateTime @default(now())
   isSystem  Boolean  @default(false)
   isAdmin   Boolean  @default(false)
-  userId    String?  // Optional for system messages
+  userId    String?
   user      User?    @relation(fields: [userId], references: [id])
   roomId    String
   room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)

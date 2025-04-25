@@ -167,6 +167,25 @@ app.post("/upload", upload.single("image"), async (req, res) => {
   }
 });
 
+// Upload audio endpoint
+app.post("/upload-audio", upload.single("audio"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No audio file uploaded" });
+    }
+
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      resource_type: "video",
+      folder: "chat-audio",
+    });
+
+    res.json({ audioUrl: result.secure_url });
+  } catch (error) {
+    console.error("Error uploading audio:", error);
+    res.status(500).json({ error: "Failed to upload audio" });
+  }
+});
+
 // Socket.IO connection handling
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
