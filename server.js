@@ -152,7 +152,7 @@ app.post("/upload", upload.single("image"), async (req, res) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         { folder: "chat-app" },
         (error, result) => {
-          if (error) reject(error);
+          if (error) reject(new Error(error));
           else resolve(result);
         }
       );
