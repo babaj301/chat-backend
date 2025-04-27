@@ -167,16 +167,27 @@ app.post("/upload", upload.single("image"), async (req, res) => {
   }
 });
 
-// Upload audio endpoint
+// Update the audio upload endpoint
 app.post("/upload-audio", upload.single("audio"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No audio file uploaded" });
     }
 
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      resource_type: "video",
-      folder: "chat-audio",
+    // Upload to Cloudinary using buffer like we do with images
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          resource_type: "video",
+          folder: "chat-audio",
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+
+      uploadStream.end(req.file.buffer);
     });
 
     res.json({ audioUrl: result.secure_url });
