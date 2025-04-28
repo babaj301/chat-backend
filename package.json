@@ -4,9 +4,11 @@
   "main": "index.js",
   "scripts": {
     "build": "prisma generate",
-    "start": "prisma migrate deploy && node server.js",
-    "dev": "nodemon server.js",
-    "postinstall": "prisma generate"
+    "start": "prisma migrate deploy && prisma db seed && node server.js",
+    "seed": "node prisma/seed.js"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   },
   "keywords": [],
   "author": "",
@@ -24,10 +26,10 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
-    "@types/node": "^22.13.16",
     "@types/socket.io": "^3.0.1",
-    "ts-node": "^10.9.2",
+    "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "@types/node": "^18.0.0"
   }
 }

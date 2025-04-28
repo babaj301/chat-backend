@@ -5,7 +5,7 @@ services:
     buildCommand: npm install
     startCommand: npm start
     disk:
-      name: sqlite-data
+      name: chat-data
       mountPath: /opt/render/project/prisma
       sizeGB: 1
     envVars:
