@@ -221,11 +221,84 @@ io.on("connection", (socket) => {
   });
 
   // Handle joining a room
+  // socket.on("joinRoom", async ({ roomId, userId, username }) => {
+  //   try {
+  //     console.log(`${username} (${userId}) attempting to join room ${roomId}`);
+
+  //     // Verify room exists
+  //     const room = await prisma.room.findUnique({
+  //       where: { id: roomId },
+  //       include: { admin: true },
+  //     });
+
+  //     if (!room) {
+  //       return socket.emit("error", "Room not found");
+  //     }
+
+  //     const roomChannel = `room_${roomId}`;
+
+  //     // Check if the user is already in the room
+  //     const isAlreadyInRoom = socket.rooms.has(roomChannel);
+
+  //     if (isAlreadyInRoom) {
+  //       console.log(
+  //         `${username} is already in room ${roomId}, skipping join message.`
+  //       );
+  //     } else {
+  //       // Leave previous rooms only if not already in this one
+  //       const socketRooms = Array.from(socket.rooms).filter(
+  //         (r) => r !== socket.id
+  //       );
+  //       socketRooms.forEach((r) => socket.leave(r));
+
+  //       // Join the new room
+  //       socket.join(roomChannel);
+
+  //       // Check if a system message already exists for this user
+  //       const existingJoinMessage = await prisma.message.findFirst({
+  //         where: {
+  //           roomId,
+  //           text: `${username} has joined the room`,
+  //           isSystem: true,
+  //         },
+  //       });
+
+  //       if (!existingJoinMessage) {
+  //         // Create system message for first-time joins only
+  //         const systemMessage = await prisma.message.create({
+  //           data: {
+  //             text: `${username} has joined the room`,
+  //             isSystem: true,
+  //             roomId,
+  //             userId: null,
+  //           },
+  //           include: { user: true },
+  //         });
+
+  //         // Broadcast join message to room
+  //         io.to(roomChannel).emit("newMessage", systemMessage);
+  //       }
+  //     }
+
+  //     // Get recent messages
+  //     const messages = await prisma.message.findMany({
+  //       where: { roomId },
+  //       orderBy: { createdAt: "asc" },
+  //       take: 50,
+  //       include: { user: true },
+  //     });
+
+  //     // Send room info and messages to the user
+  //     socket.emit("roomJoined", { room, messages });
+
+  //     console.log(`${username} successfully joined ${room.name}`);
+  //   } catch (error) {
+  //     console.error("Error joining room:", error);
+  //     socket.emit("error", "Failed to join room");
+  //   }
+  // });
   socket.on("joinRoom", async ({ roomId, userId, username }) => {
     try {
-      console.log(`${username} (${userId}) attempting to join room ${roomId}`);
-
-      // Verify room exists
       const room = await prisma.room.findUnique({
         where: { id: roomId },
         include: { admin: true },
@@ -236,48 +309,31 @@ io.on("connection", (socket) => {
       }
 
       const roomChannel = `room_${roomId}`;
+      socket.join(roomChannel);
 
-      // Check if the user is already in the room
-      const isAlreadyInRoom = socket.rooms.has(roomChannel);
+      // Get existing system message for this user
+      const existingJoinMessage = await prisma.message.findFirst({
+        where: {
+          roomId,
+          text: `${username} has joined the room`,
+          isSystem: true,
+        },
+      });
 
-      if (isAlreadyInRoom) {
-        console.log(
-          `${username} is already in room ${roomId}, skipping join message.`
-        );
-      } else {
-        // Leave previous rooms only if not already in this one
-        const socketRooms = Array.from(socket.rooms).filter(
-          (r) => r !== socket.id
-        );
-        socketRooms.forEach((r) => socket.leave(r));
-
-        // Join the new room
-        socket.join(roomChannel);
-
-        // Check if a system message already exists for this user
-        const existingJoinMessage = await prisma.message.findFirst({
-          where: {
-            roomId,
+      // Only create join message if user hasn't joined before
+      if (!existingJoinMessage) {
+        const systemMessage = await prisma.message.create({
+          data: {
             text: `${username} has joined the room`,
             isSystem: true,
+            roomId,
+            userId: null,
           },
+          include: { user: true },
         });
 
-        if (!existingJoinMessage) {
-          // Create system message for first-time joins only
-          const systemMessage = await prisma.message.create({
-            data: {
-              text: `${username} has joined the room`,
-              isSystem: true,
-              roomId,
-              userId: null,
-            },
-            include: { user: true },
-          });
-
-          // Broadcast join message to room
-          io.to(roomChannel).emit("newMessage", systemMessage);
-        }
+        // Broadcast join message to room
+        io.to(roomChannel).emit("newMessage", systemMessage);
       }
 
       // Get recent messages
@@ -290,8 +346,6 @@ io.on("connection", (socket) => {
 
       // Send room info and messages to the user
       socket.emit("roomJoined", { room, messages });
-
-      console.log(`${username} successfully joined ${room.name}`);
     } catch (error) {
       console.error("Error joining room:", error);
       socket.emit("error", "Failed to join room");
