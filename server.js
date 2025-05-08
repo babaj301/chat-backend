@@ -453,8 +453,14 @@ io.on("connection", (socket) => {
   });
 
   // Handle user typing
-  socket.on("typing", ({ roomId, username }) => {
-    socket.to(`room_${roomId}`).emit("userTyping", { username });
+
+  socket.on("typing", ({ roomId, username, isTyping }) => {
+    // Broadcast to everyone in the room except the sender
+    socket.to(`room_${roomId}`).emit("userTyping", {
+      roomId,
+      username,
+      isTyping,
+    });
   });
 
   // Handle disconnection
