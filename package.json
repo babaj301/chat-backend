@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "build": "prisma generate",
-    "start": "prisma migrate deploy && prisma db seed && node server.js",
+    "start": "prisma migrate deploy && node server.js",
+    "dev": "node server.js",
+    "postinstall": "prisma generate",
     "seed": "node prisma/seed.js"
   },
   "prisma": {
