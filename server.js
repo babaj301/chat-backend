@@ -17,7 +17,9 @@ app.use(
   cors({
     origin: [
       "https://chat-frontend-ten-opal.vercel.app",
-      "http://localhost:3000/rooms",
+      "http://localhost:3000",
+      "https://chat-frontend-d7kr2bgv3-babaj301s-projects.vercel.app",
+      "http://127.0.0.1:3000", // Add this line
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
@@ -41,7 +43,9 @@ const io = new Server(server, {
   cors: {
     origin: [
       "https://chat-frontend-ten-opal.vercel.app",
-      "http://localhost:3000/rooms",
+      "http://localhost:3000",
+      "https://chat-frontend-d7kr2bgv3-babaj301s-projects.vercel.app",
+      "http://127.0.0.1:3000", // Add this line
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
