@@ -26,15 +26,20 @@ model Room {
 }
 
 model Message {
-  id        String   @id @default(uuid())
-  text      String?
-  imageUrl  String?
-  audioUrl  String?  // Add this field for voice messages
-  createdAt DateTime @default(now())
-  isSystem  Boolean  @default(false)
-  isAdmin   Boolean  @default(false)
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
-  roomId    String
-  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  id            String    @id @default(uuid())
+  text          String?
+  imageUrl      String?
+  audioUrl      String?
+  createdAt     DateTime  @default(now())
+  isSystem      Boolean   @default(false)
+  isAdmin       Boolean   @default(false)
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id])
+  roomId        String
+  room          Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  // Thread support
+  parentId      String?   // ID of the parent message in a thread
+  parent        Message?  @relation("ThreadMessages", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies       Message[] @relation("ThreadMessages")
+  threadCount   Int       @default(0) // Number of replies in the thread
 }

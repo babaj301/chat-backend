@@ -225,82 +225,6 @@ io.on("connection", (socket) => {
   });
 
   // Handle joining a room
-  // socket.on("joinRoom", async ({ roomId, userId, username }) => {
-  //   try {
-  //     console.log(`${username} (${userId}) attempting to join room ${roomId}`);
-
-  //     // Verify room exists
-  //     const room = await prisma.room.findUnique({
-  //       where: { id: roomId },
-  //       include: { admin: true },
-  //     });
-
-  //     if (!room) {
-  //       return socket.emit("error", "Room not found");
-  //     }
-
-  //     const roomChannel = `room_${roomId}`;
-
-  //     // Check if the user is already in the room
-  //     const isAlreadyInRoom = socket.rooms.has(roomChannel);
-
-  //     if (isAlreadyInRoom) {
-  //       console.log(
-  //         `${username} is already in room ${roomId}, skipping join message.`
-  //       );
-  //     } else {
-  //       // Leave previous rooms only if not already in this one
-  //       const socketRooms = Array.from(socket.rooms).filter(
-  //         (r) => r !== socket.id
-  //       );
-  //       socketRooms.forEach((r) => socket.leave(r));
-
-  //       // Join the new room
-  //       socket.join(roomChannel);
-
-  //       // Check if a system message already exists for this user
-  //       const existingJoinMessage = await prisma.message.findFirst({
-  //         where: {
-  //           roomId,
-  //           text: `${username} has joined the room`,
-  //           isSystem: true,
-  //         },
-  //       });
-
-  //       if (!existingJoinMessage) {
-  //         // Create system message for first-time joins only
-  //         const systemMessage = await prisma.message.create({
-  //           data: {
-  //             text: `${username} has joined the room`,
-  //             isSystem: true,
-  //             roomId,
-  //             userId: null,
-  //           },
-  //           include: { user: true },
-  //         });
-
-  //         // Broadcast join message to room
-  //         io.to(roomChannel).emit("newMessage", systemMessage);
-  //       }
-  //     }
-
-  //     // Get recent messages
-  //     const messages = await prisma.message.findMany({
-  //       where: { roomId },
-  //       orderBy: { createdAt: "asc" },
-  //       take: 50,
-  //       include: { user: true },
-  //     });
-
-  //     // Send room info and messages to the user
-  //     socket.emit("roomJoined", { room, messages });
-
-  //     console.log(`${username} successfully joined ${room.name}`);
-  //   } catch (error) {
-  //     console.error("Error joining room:", error);
-  //     socket.emit("error", "Failed to join room");
-  //   }
-  // });
   socket.on("joinRoom", async ({ roomId, userId, username }) => {
     try {
       const room = await prisma.room.findUnique({
@@ -338,14 +262,22 @@ io.on("connection", (socket) => {
 
         // Broadcast join message to room
         io.to(roomChannel).emit("newMessage", systemMessage);
-      }
-
-      // Get recent messages
+      } // Get recent messages
       const messages = await prisma.message.findMany({
-        where: { roomId },
+        where: {
+          roomId,
+          parentId: null, // Only get top-level messages
+        },
         orderBy: { createdAt: "asc" },
         take: 50,
-        include: { user: true },
+        include: {
+          user: true,
+          replies: {
+            select: {
+              id: true, // Just to get the count
+            },
+          },
+        },
       });
 
       // Send room info and messages to the user
@@ -411,6 +343,148 @@ io.on("connection", (socket) => {
       }
     }
   );
+
+  // Handle thread replies
+  socket.on(
+    "sendThreadReply",
+    async ({ roomId, userId, parentId, text, imageUrl, isAdmin }) => {
+      try {
+        if (!roomId || !userId || !parentId || (!text && !imageUrl)) {
+          return socket.emit("error", "Missing required thread reply data");
+        }
+
+        // Verify parent message exists
+        const parentMessage = await prisma.message.findUnique({
+          where: { id: parentId },
+        });
+
+        if (!parentMessage) {
+          return socket.emit("error", "Parent message not found");
+        }
+
+        // Verify user exists
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+        });
+
+        if (!user) {
+          return socket.emit("error", "User not found");
+        }
+
+        // Create the reply message
+        const newReply = await prisma.message.create({
+          data: {
+            text,
+            imageUrl,
+            userId,
+            roomId,
+            parentId,
+            isAdmin: isAdmin && user.isAdmin,
+          },
+          include: {
+            user: true,
+            room: true,
+          },
+        });
+
+        // Update thread count on parent message
+        await prisma.message.update({
+          where: { id: parentId },
+          data: {
+            threadCount: {
+              increment: 1,
+            },
+          },
+        });
+
+        // Broadcast to everyone in the room
+        io.to(`room_${roomId}`).emit("newThreadReply", {
+          parentId,
+          reply: newReply,
+        });
+      } catch (error) {
+        console.error("Error sending thread reply:", error);
+        socket.emit("error", "Failed to send thread reply");
+      }
+    }
+  );
+
+  // Get thread messages
+  socket.on("getThreadMessages", async ({ parentId }) => {
+    try {
+      const threadMessages = await prisma.message.findMany({
+        where: {
+          parentId,
+        },
+        orderBy: {
+          createdAt: "asc",
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      socket.emit("threadMessages", {
+        parentId,
+        messages: threadMessages,
+      });
+    } catch (error) {
+      console.error("Error getting thread messages:", error);
+      socket.emit("error", "Failed to get thread messages");
+    }
+  });
+
+  // Handle deleting thread messages
+  socket.on("deleteThreadMessage", async ({ messageId, userId }) => {
+    try {
+      const message = await prisma.message.findUnique({
+        where: { id: messageId },
+        include: { room: true },
+      });
+
+      if (!message) {
+        return socket.emit("error", "Message not found");
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      // Check if user is authorized to delete this message
+      if (
+        message.userId !== userId &&
+        message.room.adminId !== userId &&
+        !user.isAdmin
+      ) {
+        return socket.emit("error", "Not authorized to delete this message");
+      }
+
+      // If this is a thread reply, decrement parent's thread count
+      if (message.parentId) {
+        await prisma.message.update({
+          where: { id: message.parentId },
+          data: {
+            threadCount: {
+              decrement: 1,
+            },
+          },
+        });
+      }
+
+      await prisma.message.delete({
+        where: { id: messageId },
+      });
+
+      // Broadcast to room that message was deleted
+      io.to(`room_${message.roomId}`).emit("threadMessageDeleted", {
+        messageId,
+        parentId: message.parentId,
+      });
+    } catch (error) {
+      console.error("Error deleting thread message:", error);
+      socket.emit("error", "Failed to delete thread message");
+    }
+  });
 
   // Delete a message
   socket.on("deleteMessage", async ({ messageId, userId }) => {
