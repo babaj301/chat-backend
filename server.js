@@ -266,15 +266,18 @@ io.on("connection", (socket) => {
       const messages = await prisma.message.findMany({
         where: {
           roomId,
-          parentId: null, // Only get top-level messages
+          parentId: null,
         },
         orderBy: { createdAt: "asc" },
         take: 50,
         include: {
           user: true,
           replies: {
-            select: {
-              id: true, // Just to get the count
+            include: {
+              user: true,
+            },
+            orderBy: {
+              createdAt: "asc",
             },
           },
         },
@@ -421,12 +424,19 @@ io.on("connection", (socket) => {
         },
         include: {
           user: true,
+          replies: true,
         },
       });
 
+      // Send both parent message and replies
+      const parentMessage = await prisma.message.findUnique({
+        where: { id: parentId },
+        include: { user: true },
+      });
+
       socket.emit("threadMessages", {
-        parentId,
-        messages: threadMessages,
+        parentMessage,
+        replies: threadMessages,
       });
     } catch (error) {
       console.error("Error getting thread messages:", error);
